@@ -10,21 +10,22 @@ exports.getAllTodo = async (req, res, next) =>{
     const page = req.query.page;
     const offset = ( page - 1 ) * itemsPerPage;
     await redisClient.connect()
-    redisClient.get("todos", (err, todos)=>{
-        if (err) console.err(err)
-        // if (todos != null){
-        //     return res.json(JSON.parse(todos))
-        // }
-        client.query( 'SELECT * FROM todo LIMIT $1 OFFSET $2', [itemsPerPage, offset],(err, results)=>{
-            if (err){
-                throw err;
-            }
-            redisClient.on('error', err => console.log('Redis Client Error', err));
-            redisClient.setEx("todos", DEFAULT_EXP, JSON.stringify(results.rows))
-            res.status(200).json({ results: results.rows})
-            
-        })
-    })
+
+    const todos = await redisClient.get("todos")
+        if (todos != null){
+            await redisClient.disconnect()
+            return res.json(JSON.parse(todos))
+        }
+        else{
+            client.query( 'SELECT * FROM todo LIMIT $1 OFFSET $2', [itemsPerPage, offset], (err, results)=>{
+                if (err){
+                    throw err;
+                }
+                redisClient.setEx("todos", DEFAULT_EXP, JSON.stringify(results.rows))
+                res.status(200).json({ results: results.rows})
+                
+            })   
+        }
 }
 
 exports.postTodo = (req, res, next) =>{
