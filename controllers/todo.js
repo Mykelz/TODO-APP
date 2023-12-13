@@ -1,16 +1,29 @@
 const client = require('../connection');
 const queries = require('../models/queries')
-const itemsPerPage = 1;
+const redis = require('redis');
+const redisClient = redis.createClient();
+const DEFAULT_EXP = 3600;
+const itemsPerPage = 5;
 
 
-exports.getAllTodo = (req, res, next) =>{
+exports.getAllTodo = async (req, res, next) =>{
     const page = req.query.page;
     const offset = ( page - 1 ) * itemsPerPage;
-    client.query( 'SELECT * FROM todo LIMIT $1 OFFSET $2', [itemsPerPage, offset], (err, results)=>{
-        if (err){
-            throw err;
-        }
-        res.status(200).json({ todos: results.rows})
+    await redisClient.connect()
+    redisClient.get("todos", (err, todos)=>{
+        if (err) console.err(err)
+        // if (todos != null){
+        //     return res.json(JSON.parse(todos))
+        // }
+        client.query( 'SELECT * FROM todo LIMIT $1 OFFSET $2', [itemsPerPage, offset],(err, results)=>{
+            if (err){
+                throw err;
+            }
+            redisClient.on('error', err => console.log('Redis Client Error', err));
+            redisClient.setEx("todos", DEFAULT_EXP, JSON.stringify(results.rows))
+            res.status(200).json({ results: results.rows})
+            
+        })
     })
 }
 
