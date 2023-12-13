@@ -1,9 +1,12 @@
 const client = require('../connection');
 const queries = require('../models/queries')
+const itemsPerPage = 1;
 
 
 exports.getAllTodo = (req, res, next) =>{
-    client.query( queries.getTodos, (err, results)=>{
+    const page = req.query.page;
+    const offset = ( page - 1 ) * itemsPerPage;
+    client.query( 'SELECT * FROM todo LIMIT $1 OFFSET $2', [itemsPerPage, offset], (err, results)=>{
         if (err){
             throw err;
         }
